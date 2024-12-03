@@ -1,3 +1,6 @@
 service : {
     "greet": (text) -> (text) query;
+    "add_blog": (text) -> ();
+    "get_blogs": () -> (vec text) query
 }
+
