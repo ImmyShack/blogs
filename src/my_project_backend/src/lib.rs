@@ -1,7 +1,10 @@
 use std::cell::RefCell;
 use crate::blog::Blog;
+use crate::config::Config;
 mod blog;
+mod config;
 thread_local!{
+    static CONFIG: RefCell<Config> = RefCell::new(Config::new());
     static BLOGS: RefCell<Vec<Blog>> = RefCell::new(Vec::new());
 }
 //walidacja: content <= 500, vec tagi <= 3
@@ -10,16 +13,25 @@ thread_local!{
 //tagi
 //Komentarze ?
 #[ic_cdk::update]
+fn add_config(new_config: Config) {
+    CONFIG.with(|config| *config.borrow_mut() = new_config);
+}
 fn add_blog(title: String, content: String, tags: Vec<String>) -> Result<Blog, String>{
-   //VALIDATION
-    if title.len() >= 250{
+    ic_cdk::println!("Trying to add blog: (title: {}, content: {}, tags: {:?})", title, content, tags);
+    let config = CONFIG.with(|config| config.borrow().clone());
+    //VALIDATION
+    if title.len() > config.max_title_len as usize{
         return Err("Title is too long!".to_string())
     }
-    if content.len() >= 500 {
+    if content.len() > config.max_content_len as usize {
         return Err("Content is too long!".to_string())
     }
-    if tags.len() >= 3 {
+    if tags.len() > config.max_tags_count as usize {
         return Err("Too many tags!".to_string())
+    }
+    let are_tags_in_config_tags = tags.iter().any(|tag| !config.tags.contains(tag));
+    if are_tags_in_config_tags {
+        return Err("Tags not in config tags!".to_string())
     }
     let blog = Blog::new(title, content, tags);
     BLOGS.with(|blogs| blogs.borrow_mut().push(blog));
